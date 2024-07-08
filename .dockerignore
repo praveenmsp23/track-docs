@@ -1,0 +1,17 @@
+*.md
+deployment/
+Makefile
+skaffold.yaml
+cluster.yaml
+browser/
+docker-compose.yml
+init.dev.sql
+nginx.conf
+pgadmin_default_servers.json
+pgadmin_passfile
+local-dns.sh
+deploy.sh
+Dockerfile.prod
+skaffold.db.yaml
+cert.crt
+cert.key

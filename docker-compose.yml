@@ -1,0 +1,139 @@
+services:
+  db:
+    image: postgres:16.3-alpine
+    restart: on-failure
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+    healthcheck:
+      test: ["CMD","pg_isready","-q","-d","trackdocs","-U","trackdocs"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    networks:
+      default:
+        ipv4_address: 172.28.5.1
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./init.db.sql:/docker-entrypoint-initdb.d/create_trackdocs.sql
+  cache:
+    image: "redis:7.2-alpine"
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+    command: redis-server --save 10 1 --loglevel warning --requirepass A5N3e7x8uY3tch
+    volumes:
+      - cache_data:/data
+    networks:
+      default:
+        ipv4_address: 172.28.5.2
+  zookeeper:
+    image: bitnami/zookeeper:3.9
+    restart: on-failure
+    ports:
+      - "2181:2181"
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: yes
+    networks:
+      default:
+        ipv4_address: 172.28.5.3
+  kafka:
+    image: bitnami/kafka:3.3
+    restart: on-failure
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CREATE_TOPICS: "UploadFile:1:1,TrackUpload:1:1"
+      ALLOW_PLAINTEXT_LISTENER: yes
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      default:
+        ipv4_address: 172.28.5.4
+    depends_on:
+      - "zookeeper"
+  meilisearch:
+    image: getmeili/meilisearch:v1.9
+    restart: on-failure
+    environment:
+      - http_proxy
+      - https_proxy
+      - MEILI_MASTER_KEY=A5N3e7x8uY3tch
+      - MEILI_NO_ANALYTICS=true
+      - MEILI_ENV=development
+      - MEILI_LOG_LEVEL
+      - MEILI_DB_PATH=/data.ms
+    volumes:
+      - search_data:/data.ms
+    ports:
+      - "7700:7700"
+    networks:
+      default:
+        ipv4_address: 172.28.5.5
+  pgadmin:
+    image: dpage/pgadmin4:8.9
+    restart: on-failure
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "5432:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin4/storage
+      - ./pgadmin_default_servers.json:/pgadmin4/servers.json
+      - ./pgadmin_passfile:/pgadmin4/pgpassfile
+    networks:
+      default:
+        ipv4_address: 172.28.5.6
+  redisinsight:
+    image: redislabs/redisinsight:2.52
+    restart: on-failure
+    ports:
+      - "5540:5540"
+    volumes:
+      - redisinsight_data:/db
+    networks:
+      default:
+        ipv4_address: 172.28.5.7
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: trackdocs-api
+    env_file:
+      - .env
+    environment:
+      - TRACKDOCS_PORT=8080
+      - VIRTUAL_HOST=api
+      - VIRTUAL_PORT=8080
+    networks:
+      default:
+        ipv4_address: 172.28.5.8
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    links:
+      - db
+
+volumes:
+  db_data:
+  cache_data:
+  search_data:
+  pgadmin_data:
+  redisinsight_data:
+
+networks:
+  default:
+    name: trackdocs
+    external: true

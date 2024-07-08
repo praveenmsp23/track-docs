@@ -1,0 +1,21 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "TrackDocs Local",
+      "Group": "Servers",
+      "Port": 5432,
+      "Username": "postgres",
+      "Host": "db",
+      "MaintenanceDB": "postgres",
+      "PassFile": "/pgadmin4/pgpassfile",
+      "BGColor": "#FEDC02",
+      "FGColor": "#000000",
+      "SSLMode": "prefer",
+      "SSLCompression": 0,
+      "Timeout": 10,
+      "UseSSHTunnel": 0,
+      "TunnelPort": "22",
+      "TunnelAuthentication": 0
+    }
+  }
+}
